@@ -10,7 +10,7 @@ import random
 
 Lx, Ly, Lz = 1.0, 1.0, 1.0
 
-L, M, N = 21, 21, 21
+L, M, N = 25, 25, 25
 
 Nx, Ny, Nz = L, M, N
 
@@ -26,11 +26,13 @@ hx2hy2, hy2hz2, hz2hx2 = hx2*hy2, hy2*hz2, hz2*hx2
 
 hx2hy2hz2 = hx2*hy2*hz2
 
-Ra = 1.0e5
+idx2, idy2, idz2 = 1.0/hx2, 1.0/hy2, 1.0/hz2
 
-Pr = 0.786
+Ra = 1.0e4
 
-Ta = 1.0e7
+Pr = 1
+
+Ta = 0.0e7
 
 print("#", "Ra=", Ra, "Pr=", Pr, "Ta=", Ta)
 
@@ -57,6 +59,8 @@ VpTolerance = 1.0e-5
 
 # Tolerance value in Jacobi iterations
 PoissonTolerance = 1.0e-3
+
+gssor = 1.6
 
 maxCount = 1e4
 
@@ -490,19 +494,40 @@ def PoissonSolver(rho):
     
     
     Pp = np.zeros([L, M, N])
+    #Pp = np.random.rand(Nx, Ny, Nz)
+    #Ppp = np.zeros([L, M, N])
     
     #print(np.amax(rho))
     
     jCnt = 0
     
     while True:
-    
-        Pp[1:L-1, 1:M-1, 1:N-1] = (((hy2hz2*(Pp[0:L-2, 1:M-1, 1:N-1] + Pp[2:L, 1:M-1, 1:N-1]) +
-                                    hz2hx2*(Pp[1:L-1, 0:M-2, 1:N-1] + Pp[1:L-1, 2:M, 1:N-1]) +
-                                    hx2hy2*(Pp[1:L-1, 1:M-1, 0:N-2] + Pp[1:L-1, 1:M-1, 2:N]))/(hx2hy2hz2))
-                                    - rho[1:L-1, 1:M-1, 1:N-1])/ \
-                                        (2.0*(hy2hz2 + hz2hx2 + hx2hy2)/(hx2hy2hz2))
-    
+
+        '''
+        
+        for i in range(1,Nx-1):
+            for j in range(1,Ny-1):
+                for k in range(1,Nz-1):
+                    Pp[i,j,k] = (1.0/(-2.0*(idx2 + idy2 + idz2))) * (rho[i, j, k] - 
+                                       idx2*(Pp[i+1, j, k] + Pp[i-1, j, k]) -
+                                       idy2*(Pp[i, j+1, k] + Pp[i, j-1, k]) -
+                                       idz2*(Pp[i, j, k+1] + Pp[i, j, k-1]))
+
+        Pp[1:L-1, 1:M-1, 1:N-1] = (1.0-gssor)*Ppp[1:L-1, 1:M-1, 1:N-1] + gssor * Pp[1:L-1, 1:M-1, 1:N-1]            
+
+        '''
+           
+        
+        Pp[1:L-1, 1:M-1, 1:N-1] = (1.0/(-2.0*(idx2 + idy2 + idz2))) * (rho[1:L-1, 1:M-1, 1:N-1] - 
+                                       idx2*(Pp[0:L-2, 1:M-1, 1:N-1] + Pp[2:L, 1:M-1, 1:N-1]) -
+                                       idy2*(Pp[1:L-1, 0:M-2, 1:N-1] + Pp[1:L-1, 2:M, 1:N-1]) -
+                                       idz2*(Pp[1:L-1, 1:M-1, 0:N-2] + Pp[1:L-1, 1:M-1, 2:N]))   
+
+
+        #Pp[1:L-1, 1:M-1, 1:N-1] = (1.0-gssor)*Ppp[1:L-1, 1:M-1, 1:N-1] + gssor*Pp[1:L-1, 1:M-1, 1:N-1]                                                                   
+           
+        #Ppp = Pp.copy()
+
         #imposePBCs(Pp)
     
         maxErr = np.amax(np.fabs(rho[1:L-1, 1:M-1, 1:N-1] -((
@@ -515,6 +540,7 @@ def PoissonSolver(rho):
         #    print(maxErr)
     
         if maxErr < PoissonTolerance:
+            print(jCnt)
             #print("Poisson solver converged")
             break
     
