@@ -4,6 +4,7 @@ import pylab as plt
 from matplotlib import cm
 import h5py as hp
 import time
+from datetime import datetime
 import random 
 
 
@@ -148,7 +149,7 @@ def getDiv(U, V, W):
                                 (W[1:Nx-1, 1:Ny-1, 2:Nz] - W[1:Nx-1, 1:Ny-1, 0:Nz-2])*0.5/hz)
     
     #return np.unravel_index(divNyat.argmax(), divMat.shape), np.mean(divMat)
-    return np.max(divMat)
+    return np.max(abs(divMat))
 
 
 
@@ -421,7 +422,7 @@ def PoissonSolver(rho):
         #    print(maxErr)
     
         if maxErr < PoissonTolerance:
-            #print(jCnt)
+            print(jCnt)
             #print("Poisson solver converged")
             break
     
@@ -463,6 +464,8 @@ def imposePBCs(P):
 
 while True:
 
+    t1 = datetime.now()
+
     if iCnt % opInt == 0:
 
         Re = np.mean(np.sqrt(U[1:Nx-1, 1:Ny-1, 1:Nz-1]**2.0 + V[1:Nx-1, 1:Ny-1, 1:Nz-1]**2.0 + W[1:Nx-1, 1:Ny-1, 1:Nz-1]**2.0))/nu
@@ -494,7 +497,10 @@ while True:
                                 (V[1:Nx-1, 2:Ny, 1:Nz-1] - V[1:Nx-1, 0:Ny-2, 1:Nz-1])/(2.0*hy) +
                                 (W[1:Nx-1, 1:Ny-1, 2:Nz] - W[1:Nx-1, 1:Ny-1, 0:Nz-2])/(2.0*hz))/dt
 
+    tp1 = datetime.now()
     Pp = PoissonSolver(rhs)
+    tp2 = datetime.now()
+    print(tp2-tp1)    
 
     P = P + Pp
 
@@ -526,6 +532,12 @@ while True:
     time = time + dt
 
     iCnt = iCnt + 1
+
+    t2 = datetime.now()
+
+    print(t2-t1)
+
+
 
 
 
