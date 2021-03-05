@@ -106,6 +106,10 @@ else:
     W = np.zeros([Nx, Ny, Nz])
 
 
+Pp = np.zeros([Nx, Ny, Nz])
+divMat = np.zeros([Nx, Ny, Nz])
+
+
 Hx = np.zeros_like(U)
 Hy = np.zeros_like(V)
 Hz = np.zeros_like(W)
@@ -141,8 +145,6 @@ writeSoln(U, V, W, P, T, time)
 
 
 def getDiv(U, V, W):
-
-    divMat = np.zeros([Nx, Ny, Nz])
 
     divMat[1:Nx-1, 1:Ny-1, 1:Nz-1] = ((U[2:Nx, 1:Ny-1, 1:Nz-1] - U[0:Nx-2, 1:Ny-1, 1:Nz-1])*0.5/hx +
                                 (V[1:Nx-1, 2:Ny, 1:Nz-1] - V[1:Nx-1, 0:Ny-2, 1:Nz-1])*0.5/hy +
@@ -361,8 +363,6 @@ def PoissonSolver(rho):
     global hx2, hy2, hz2, hy2hz2, hz2hx2, hx2hy2, hx2hy2hz2, nu, dt, PoissonTolerance, maxCount 
     global Nz, Ny, Nx    
     
-    
-    Pp = np.zeros([Nx, Ny, Nz])
     #Pp = np.random.rand(Nx, Ny, Nz)
     #Ppp = np.zeros([Nx, Ny, Nz])
         
@@ -407,7 +407,7 @@ def PoissonSolver(rho):
         #    print(maxErr)
     
         if maxErr < PoissonTolerance:
-            print(jCnt)
+            #print(jCnt)
             #print("Poisson solver converged")
             break
     
@@ -498,6 +498,11 @@ while True:
     imposeWBCs(W)                               
     imposePBCs(P)                               
     imposeTBCs(T)       
+
+
+    #Umax, Vmax, Wmax, Tmax, Pmax = np.amax(abs(U)), np.amax(abs(V)), np.amax(abs(W)), np.amax(abs(T)), np.amax(abs(P))
+
+    #print(Umax, Vmax, Wmax, Tmax,Pmax)
 
     #if abs(fwTime - time) < 0.5*dt:
     if abs(time - tMax)<1e-5:
