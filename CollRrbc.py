@@ -12,7 +12,8 @@ import random
 #### Grid Parameters ###########################
 Lx, Ly, Lz = 1.0, 1.0, 1.0
 
-Nx, Ny, Nz = 32, 32, 32
+Nx = 20
+Ny, Nz = Nx, Nx
 
 hx, hy, hz = Lx/(Nx-1), Ly/(Ny-1), Lz/(Nz-1)
 
@@ -31,11 +32,10 @@ idx2, idy2, idz2 = 1.0/hx2, 1.0/hy2, 1.0/hz2
 
 
 
-
 #### Flow Parameters #############
-Ra = 1.0e5
+Ra = 1.0e4
 
-Pr = 0.786
+Pr = 1
 
 Ta = 0.0e7
 
@@ -69,7 +69,7 @@ VpTolerance = 1.0e-5
 # Tolerance value in Poisson iterations
 PoissonTolerance = 1.0e-3
 
-gssor = 1.6
+gssor = 1.0
 
 maxCount = 1e4
 #################################################
@@ -92,7 +92,7 @@ if restart == 1:
     T = hdf5_reader(filename, "T")
 
 else:
-    P = np.ones([Nx, Ny, Nz])
+    P = np.zeros([Nx, Ny, Nz])
 
 #T = random.uniform(0, 1) * np.ones([Nx, Ny, Nz])
     T = np.zeros([Nx, Ny, Nz])
@@ -160,8 +160,6 @@ def getDiv(U, V, W):
 
 
 def computeNLinDiff_X(U, V, W):
-    global Hx
-    global Nz, Ny, Nx, Nx, Ny, Nz
 
     Hx[1:Nx-1, 1:Ny-1, 1:Nz-1] = (((U[2:Nx, 1:Ny-1, 1:Nz-1] - 2.0*U[1:Nx-1, 1:Ny-1, 1:Nz-1] + U[0:Nx-2, 1:Ny-1, 1:Nz-1])/hx2 + 
                                 (U[1:Nx-1, 2:Ny, 1:Nz-1] - 2.0*U[1:Nx-1, 1:Ny-1, 1:Nz-1] + U[1:Nx-1, 0:Ny-2, 1:Nz-1])/hy2 + 
@@ -173,8 +171,6 @@ def computeNLinDiff_X(U, V, W):
     return Hx
 
 def computeNLinDiff_Y(U, V, W):
-    global Hy
-    global Nz, Ny, Nx, Nx, Ny, Nz
 
     Hy[1:Nx-1, 1:Ny-1, 1:Nz-1] = (((V[2:Nx, 1:Ny-1, 1:Nz-1] - 2.0*V[1:Nx-1, 1:Ny-1, 1:Nz-1] + V[0:Nx-2, 1:Ny-1, 1:Nz-1])/hx2 + 
                                 (V[1:Nx-1, 2:Ny, 1:Nz-1] - 2.0*V[1:Nx-1, 1:Ny-1, 1:Nz-1] + V[1:Nx-1, 0:Ny-2, 1:Nz-1])/hy2 + 
@@ -187,8 +183,6 @@ def computeNLinDiff_Y(U, V, W):
 
 
 def computeNLinDiff_Z(U, V, W):
-    global Hz
-    global Nz, Ny, Nx, Nx, Ny, Nz
 
     Hz[1:Nx-1, 1:Ny-1, 1:Nz-1] = (((W[2:Nx, 1:Ny-1, 1:Nz-1] - 2.0*W[1:Nx-1, 1:Ny-1, 1:Nz-1] + W[0:Nx-2, 1:Ny-1, 1:Nz-1])/hx2 + 
                                 (W[1:Nx-1, 2:Ny, 1:Nz-1] - 2.0*W[1:Nx-1, 1:Ny-1, 1:Nz-1] + W[1:Nx-1, 0:Ny-2, 1:Nz-1])/hy2 + 
@@ -217,9 +211,6 @@ def computeNLinDiff_T(U, V, W, T):
 
 #Jacobi iterative solver for U
 def uJacobi(rho):
-    global hx2, hy2, hz2, hy2hz2, hz2hx2, hx2hy2, hx2hy2hz2, nu, dt, VpTolerance, maxCount
-    global U
-    global Nx, Ny, Nz, Nx, Ny, Nz
 
     jCnt = 0
     while True:
@@ -252,9 +243,6 @@ def uJacobi(rho):
 
 #Jacobi iterative solver for V
 def vJacobi(rho):
-    global hx2, hy2, hz2, hy2hz2, hz2hx2, hx2hy2, hx2hy2hz2, nu, dt, VpTolerance, maxCount  
-    global V
-    global Nx, Ny, Nz, Nx, Ny, Nz
         
     jCnt = 0
     while True:
@@ -287,11 +275,7 @@ def vJacobi(rho):
 
 
 #Jacobi iterative solver for W
-def wJacobi(rho):
-    global hx2, hy2, hz2, hy2hz2, hz2hx2, hx2hy2, hx2hy2hz2, nu, dt, VpTolerance, maxCount  
-    global W
-    global Nx, Ny, Nz, Nx, Ny, Nz
-    
+def wJacobi(rho):    
     
     jCnt = 0
     while True:
@@ -325,9 +309,6 @@ def wJacobi(rho):
 
 #Jacobi iterative solver for T
 def TJacobi(rho):
-    global hx2, hy2, hz2, hy2hz2, hz2hx2, hx2hy2, hx2hy2hz2, nu, dt, VpTolerance, maxCount  
-    global T
-    global Nx, Ny, Nz, Nx, Ny, Nz
         
     jCnt = 0
     while True:
@@ -360,43 +341,32 @@ def TJacobi(rho):
 
 
 def PoissonSolver(rho):
-    global hx2, hy2, hz2, hy2hz2, hz2hx2, hx2hy2, hx2hy2hz2, nu, dt, PoissonTolerance, maxCount 
-    global Nz, Ny, Nx    
     
-    #Pp = np.random.rand(Nx, Ny, Nz)
-    #Ppp = np.zeros([Nx, Ny, Nz])
+    Ppp = np.zeros([Nx, Ny, Nz])
         
     jCnt = 0
     
     while True:
 
+        #Ppp = Pp.copy()
         '''
-        
         for i in range(1,Nx-1):
             for j in range(1,Ny-1):
                 for k in range(1,Nz-1):
-                    Pp[i,j,k] = (1.0/(-2.0*(idx2 + idy2 + idz2))) * (rho[i, j, k] - 
+                    Pp[i,j,k] = (1.0-gssor)*Ppp[i,j,k] + (gssor/(-2.0*(idx2 + idy2 + idz2))) * (rho[i, j, k] - 
                                        idx2*(Pp[i+1, j, k] + Pp[i-1, j, k]) -
                                        idy2*(Pp[i, j+1, k] + Pp[i, j-1, k]) -
-                                       idz2*(Pp[i, j, k+1] + Pp[i, j, k-1]))
+                                       idz2*(Pp[i, j, k+1] + Pp[i, j, k-1]))                    
+        '''       
 
-        Pp[1:Nx-1, 1:Ny-1, 1:Nz-1] = (1.0-gssor)*Ppp[1:Nx-1, 1:Ny-1, 1:Nz-1] + gssor * Pp[1:Nx-1, 1:Ny-1, 1:Nz-1]            
-
-        '''
-           
-        
         Pp[1:Nx-1, 1:Ny-1, 1:Nz-1] = (1.0/(-2.0*(idx2 + idy2 + idz2))) * (rho[1:Nx-1, 1:Ny-1, 1:Nz-1] - 
                                        idx2*(Pp[0:Nx-2, 1:Ny-1, 1:Nz-1] + Pp[2:Nx, 1:Ny-1, 1:Nz-1]) -
                                        idy2*(Pp[1:Nx-1, 0:Ny-2, 1:Nz-1] + Pp[1:Nx-1, 2:Ny, 1:Nz-1]) -
                                        idz2*(Pp[1:Nx-1, 1:Ny-1, 0:Nz-2] + Pp[1:Nx-1, 1:Ny-1, 2:Nz]))   
-
-
-        #Pp[1:Nx-1, 1:Ny-1, 1:Nz-1] = (1.0-gssor)*Ppp[1:Nx-1, 1:Ny-1, 1:Nz-1] + gssor*Pp[1:Nx-1, 1:Ny-1, 1:Nz-1]                                                                   
-           
-        #Ppp = Pp.copy()
-
+          
+        
         #imposePBCs(Pp)
-    
+   
         maxErr = np.amax(np.fabs(rho[1:Nx-1, 1:Ny-1, 1:Nz-1] -((
                         (Pp[0:Nx-2, 1:Ny-1, 1:Nz-1] - 2.0*Pp[1:Nx-1, 1:Ny-1, 1:Nz-1] + Pp[2:Nx, 1:Ny-1, 1:Nz-1])/hx2 +
                         (Pp[1:Nx-1, 0:Ny-2, 1:Nz-1] - 2.0*Pp[1:Nx-1, 1:Ny-1, 1:Nz-1] + Pp[1:Nx-1, 2:Ny, 1:Nz-1])/hy2 +
@@ -408,7 +378,6 @@ def PoissonSolver(rho):
     
         if maxErr < PoissonTolerance:
             #print(jCnt)
-            #print("Poisson solver converged")
             break
     
         jCnt += 1
@@ -453,11 +422,11 @@ while True:
 
     if iCnt % opInt == 0:
 
-        Re = np.mean(np.sqrt(U[1:Nx-1, 1:Ny-1, 1:Nz-1]**2.0 + V[1:Nx-1, 1:Ny-1, 1:Nz-1]**2.0 + W[1:Nx-1, 1:Ny-1, 1:Nz-1]**2.0))/nu
-        Nu = 1.0 + np.mean(W[1:Nx-1, 1:Ny-1, 1:Nz-1]*T[1:Nx-1, 1:Ny-1, 1:Nz-1])/kappa
+        Re = np.sum(np.sqrt(U[1:Nx-1, 1:Ny-1, 1:Nz-1]**2.0 + V[1:Nx-1, 1:Ny-1, 1:Nz-1]**2.0 + W[1:Nx-1, 1:Ny-1, 1:Nz-1]**2.0))/(nu*(Nx-2)*(Ny-2)*(Nz-2))
+        Nu = 1.0 + np.sum(W[1:Nx-1, 1:Ny-1, 1:Nz-1]*T[1:Nx-1, 1:Ny-1, 1:Nz-1])/(kappa*(Nx-2)*(Ny-2)*(Nz-2))
         maxDiv = getDiv(U, V, W)
 
-        print("%f    %f    %f    %f" %(time, Re, Nu, maxDiv))           
+        print("%f \t %f \t %f \t %f" %(time, Re, Nu, maxDiv))           
 
 
     Hx = computeNLinDiff_X(U, V, W)
@@ -486,7 +455,6 @@ while True:
     Pp = PoissonSolver(rhs)
     tp2 = datetime.now()
     #print(tp2-tp1)    
-
     P = P + Pp
 
     U[1:Nx-1, 1:Ny-1, 1:Nz-1] = U[1:Nx-1, 1:Ny-1, 1:Nz-1] - dt*(Pp[2:Nx, 1:Ny-1, 1:Nz-1] - Pp[0:Nx-2, 1:Ny-1, 1:Nz-1])/(2.0*hx)
