@@ -6,13 +6,14 @@ import h5py as hp
 import time
 from datetime import datetime
 import random 
+import scipy.integrate as integrate
 
 
 
 #### Grid Parameters ###########################
 Lx, Ly, Lz = 1.0, 1.0, 1.0
 
-Nx = 20
+Nx = 33
 Ny, Nz = Nx, Nx
 
 hx, hy, hz = Lx/(Nx-1), Ly/(Ny-1), Lz/(Nz-1)
@@ -23,11 +24,9 @@ z = np.linspace(0, 1, Nz, endpoint=True)
 
 hx2, hy2, hz2 = hx*hx, hy*hy, hz*hz
 
-hx2hy2, hy2hz2, hz2hx2 = hx2*hy2, hy2*hz2, hz2*hx2
-
-hx2hy2hz2 = hx2*hy2*hz2
-
 idx2, idy2, idz2 = 1.0/hx2, 1.0/hy2, 1.0/hz2
+
+print('# Grid', Nx, Ny, Nz)
 #############################################################
 
 
@@ -72,6 +71,8 @@ PoissonTolerance = 1.0e-3
 gssor = 1.0
 
 maxCount = 1e4
+
+print('# Tolerance', VpTolerance, PoissonTolerance)
 #################################################
 
 
@@ -94,7 +95,6 @@ if restart == 1:
 else:
     P = np.zeros([Nx, Ny, Nz])
 
-#T = random.uniform(0, 1) * np.ones([Nx, Ny, Nz])
     T = np.zeros([Nx, Ny, Nz])
 
     T[:, :, 0:Nz] = 1 - z[0:Nz]
@@ -154,11 +154,6 @@ def getDiv(U, V, W):
     return np.max(abs(divMat))
 
 
-
-
-
-
-
 def computeNLinDiff_X(U, V, W):
 
     Hx[1:Nx-1, 1:Ny-1, 1:Nz-1] = (((U[2:Nx, 1:Ny-1, 1:Nz-1] - 2.0*U[1:Nx-1, 1:Ny-1, 1:Nz-1] + U[0:Nx-2, 1:Ny-1, 1:Nz-1])/hx2 + 
@@ -209,7 +204,6 @@ def computeNLinDiff_T(U, V, W, T):
     return Ht
 
 
-#Jacobi iterative solver for U
 def uJacobi(rho):
 
     jCnt = 0
@@ -227,7 +221,6 @@ def uJacobi(rho):
                             (U[1:Nx-1, 0:Ny-2, 1:Nz-1] - 2.0*U[1:Nx-1, 1:Ny-1, 1:Nz-1] + U[1:Nx-1, 2:Ny, 1:Nz-1])/hy2 +
                             (U[1:Nx-1, 1:Ny-1, 0:Nz-2] - 2.0*U[1:Nx-1, 1:Ny-1, 1:Nz-1] + U[1:Nx-1, 1:Ny-1, 2:Nz])/hz2))))
         
-            #if maxErr < tolerance:
         if maxErr < VpTolerance:
             #print(jCnt)
             break
@@ -241,7 +234,6 @@ def uJacobi(rho):
     return U        
 
 
-#Jacobi iterative solver for V
 def vJacobi(rho):
         
     jCnt = 0
@@ -260,7 +252,6 @@ def vJacobi(rho):
                         (V[1:Nx-1, 0:Ny-2, 1:Nz-1] - 2.0*V[1:Nx-1, 1:Ny-1, 1:Nz-1] + V[1:Nx-1, 2:Ny, 1:Nz-1])/hy2 +
                         (V[1:Nx-1, 1:Ny-1, 0:Nz-2] - 2.0*V[1:Nx-1, 1:Ny-1, 1:Nz-1] + V[1:Nx-1, 1:Ny-1, 2:Nz])/hz2))))
     
-        #if maxErr < tolerance:
         if maxErr < VpTolerance:
             #print(jCnt)
             break
@@ -274,7 +265,6 @@ def vJacobi(rho):
     return V
 
 
-#Jacobi iterative solver for W
 def wJacobi(rho):    
     
     jCnt = 0
@@ -293,7 +283,6 @@ def wJacobi(rho):
                         (W[1:Nx-1, 0:Ny-2, 1:Nz-1] - 2.0*W[1:Nx-1, 1:Ny-1, 1:Nz-1] + W[1:Nx-1, 2:Ny, 1:Nz-1])/hy2 +
                         (W[1:Nx-1, 1:Ny-1, 0:Nz-2] - 2.0*W[1:Nx-1, 1:Ny-1, 1:Nz-1] + W[1:Nx-1, 1:Ny-1, 2:Nz])/hz2))))
     
-        #if maxErr < tolerance:
         if maxErr < 1e-5:
             #print(jCnt)
             break
@@ -307,7 +296,6 @@ def wJacobi(rho):
     return W       
 
 
-#Jacobi iterative solver for T
 def TJacobi(rho):
         
     jCnt = 0
@@ -340,16 +328,14 @@ def TJacobi(rho):
 
 
 
-def PoissonSolver(rho):
-    
-    Ppp = np.zeros([Nx, Ny, Nz])
+def PoissonSolver(rho):   
+    #Ppp = np.zeros([Nx, Ny, Nz])
         
-    jCnt = 0
-    
+    jCnt = 0   
     while True:
-
-        #Ppp = Pp.copy()
+        
         '''
+        #Ppp = Pp.copy()
         for i in range(1,Nx-1):
             for j in range(1,Ny-1):
                 for k in range(1,Nz-1):
@@ -421,9 +407,14 @@ while True:
     t1 = datetime.now()
 
     if iCnt % opInt == 0:
+        uSqr = U**2.0 + V**2.0 + W**2.0
+        uInt = integrate.simps(integrate.simps(integrate.simps(uSqr, x), y), z)
+        Re = np.sqrt(uInt)/nu
 
-        Re = np.sum(np.sqrt(U[1:Nx-1, 1:Ny-1, 1:Nz-1]**2.0 + V[1:Nx-1, 1:Ny-1, 1:Nz-1]**2.0 + W[1:Nx-1, 1:Ny-1, 1:Nz-1]**2.0))/(nu*(Nx-2)*(Ny-2)*(Nz-2))
-        Nu = 1.0 + np.sum(W[1:Nx-1, 1:Ny-1, 1:Nz-1]*T[1:Nx-1, 1:Ny-1, 1:Nz-1])/(kappa*(Nx-2)*(Ny-2)*(Nz-2))
+        wT = W*T
+        wTInt = integrate.simps(integrate.simps(integrate.simps(wT, x), y), z)
+        Nu = 1.0 + wTInt/kappa
+
         maxDiv = getDiv(U, V, W)
 
         print("%f \t %f \t %f \t %f" %(time, Re, Nu, maxDiv))           
@@ -466,11 +457,6 @@ while True:
     imposeWBCs(W)                               
     imposePBCs(P)                               
     imposeTBCs(T)       
-
-
-    #Umax, Vmax, Wmax, Tmax, Pmax = np.amax(abs(U)), np.amax(abs(V)), np.amax(abs(W)), np.amax(abs(T)), np.amax(abs(P))
-
-    #print(Umax, Vmax, Wmax, Tmax,Pmax)
 
     #if abs(fwTime - time) < 0.5*dt:
     if abs(time - tMax)<1e-5:
