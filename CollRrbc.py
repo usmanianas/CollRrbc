@@ -54,13 +54,16 @@ nu, kappa = np.sqrt(Pr/Ra), 1.0/np.sqrt(Ra*Pr)
 #########Simulation Parameters #########################
 dt = 0.01
 
-tMax = 10
+tMax = 1
 
 # Number of iterations after which output must be printed to standard I/O
 opInt = 1
 
-# File writing interval
-fwInt = 2
+# Solution File writing interval
+fwInt = 100
+
+# Restart File writing interval
+rwInt = 10
 
 # Tolerance value in Jacobi iterations
 VpTolerance = 1.0e-5
@@ -76,10 +79,10 @@ print('# Tolerance', VpTolerance, PoissonTolerance)
 #################################################
 
 
-restart = 1    # 0-Fresh, 1-Restart
+restart = 0   # 0-Fresh, 1-Restart
 
 if restart == 1:
-    filename = "Soln_001.00000.h5"
+    filename = "Restart.h5"
     def hdf5_reader(filename,dataset):
         file_V1_read = hp.File(filename)
         dataset_V1_read = file_V1_read["/"+dataset]
@@ -129,6 +132,12 @@ Hz.fill(0.0)
 Ht.fill(0.0)
 
 fwTime = 0.0
+rwTime = 0.0
+
+if restart == 1:
+    fwTime = time
+    rwTime = time
+
 iCnt = 1
 
 def writeSoln(U, V, W, P, T, time):
@@ -145,8 +154,20 @@ def writeSoln(U, V, W, P, T, time):
     dset = f.create_dataset("Time", data = time)
     f.close()
 
-writeSoln(U, V, W, P, T, time)
 
+def writeRestart(U, V, W, P, T, time):
+
+    fName = "Restart.h5"
+    print("#Writing Restart file: ", fName)        
+    f = hp.File(fName, "w")
+
+    dset = f.create_dataset("U", data = U)
+    dset = f.create_dataset("V", data = V)
+    dset = f.create_dataset("W", data = W)
+    dset = f.create_dataset("T", data = T)
+    dset = f.create_dataset("P", data = P)
+    dset = f.create_dataset("Time", data = time)
+    f.close()
 
 
 def getDiv(U, V, W):
@@ -422,7 +443,34 @@ while True:
 
         maxDiv = getDiv(U, V, W)
 
+        f = open('TimeSeries.dat', 'a')
+        if iCnt == 1:
+            f.write("# %f \t %f \t %i \t %i \t %i \n" %(Ra, Pr, Nx, Ny, Nz)) 
+            f.write('# time, Re, Nu, Divergence \n')
+
+        f.write("%f \t %f \t %f \t %f \n" %(time, Re, Nu, maxDiv))
+        #f.close()
+
         print("%f \t %f \t %f \t %f" %(time, Re, Nu, maxDiv))           
+
+
+
+    if abs(rwTime - time) < 0.5*dt:
+        writeRestart(U, V, W, P, T, time)
+        rwTime = rwTime + rwInt
+
+    if abs(fwTime - time) < 0.5*dt:
+        writeSoln(U, V, W, P, T, time)
+        fwTime = fwTime + fwInt  
+
+    if abs(time - tMax)<1e-5:
+        Z, Y = np.meshgrid(y,z)
+        plt.contourf(Y, Z, T[int(Nx/2), :, :], 500, cmap=cm.coolwarm)
+        clb = plt.colorbar()
+        plt.quiver(Y[0:Nx,0:Ny], Z[0:Nx,0:Ny], V[int(Nx/2),:, :], W[int(Nx/2), :, :])
+        plt.axis('scaled')
+        clb.ax.set_title(r'$T$', fontsize = 20)
+        plt.show()
 
 
     Hx = computeNLinDiff_X(U, V, W)
@@ -462,18 +510,6 @@ while True:
     imposeWBCs(W)                               
     imposePBCs(P)                               
     imposeTBCs(T)       
-
-    #if abs(fwTime - time) < 0.5*dt:
-    if abs(time - tMax)<1e-5:
-        writeSoln(U, V, W, P, T, time)
-        Z, Y = np.meshgrid(y,z)
-        plt.contourf(Y, Z, T[int(Nx/2), :, :], 500, cmap=cm.coolwarm)
-        clb = plt.colorbar()
-        plt.quiver(Y[0:Nx,0:Ny], Z[0:Nx,0:Ny], V[int(Nx/2),:, :], W[int(Nx/2), :, :])
-        plt.axis('scaled')
-        clb.ax.set_title(r'$T$', fontsize = 20)
-        plt.show()
-        fwTime = fwTime + fwInt                                 
 
     if time > tMax:
         break   
