@@ -54,7 +54,7 @@ nu, kappa = np.sqrt(Pr/Ra), 1.0/np.sqrt(Ra*Pr)
 #########Simulation Parameters #########################
 dt = 0.01
 
-tMax = 1000
+tMax = 10
 
 # Number of iterations after which output must be printed to standard I/O
 opInt = 1
@@ -66,7 +66,7 @@ fwInt = 2
 VpTolerance = 1.0e-5
 
 # Tolerance value in Poisson iterations
-PoissonTolerance = 1.0e-3
+PoissonTolerance = 1.0e-4
 
 gssor = 1.0
 
@@ -76,10 +76,10 @@ print('# Tolerance', VpTolerance, PoissonTolerance)
 #################################################
 
 
-restart = 0    # 0-Fresh, 1-Restart
+restart = 1    # 0-Fresh, 1-Restart
 
 if restart == 1:
-    filename = "Soln_500.00000.h5"
+    filename = "Soln_001.00000.h5"
     def hdf5_reader(filename,dataset):
         file_V1_read = hp.File(filename)
         dataset_V1_read = file_V1_read["/"+dataset]
@@ -92,7 +92,14 @@ if restart == 1:
     P = hdf5_reader(filename, "P")
     T = hdf5_reader(filename, "T")
 
+    f = hp.File(filename, 'r')
+    time = f.get('Time')
+    time = np.array(time)
+    f.close()
+
 else:
+    time = 0
+
     P = np.zeros([Nx, Ny, Nz])
 
     T = np.zeros([Nx, Ny, Nz])
@@ -121,10 +128,8 @@ Hy.fill(0.0)
 Hz.fill(0.0)
 Ht.fill(0.0)
 
-time = 0
 fwTime = 0.0
 iCnt = 1
-
 
 def writeSoln(U, V, W, P, T, time):
 
@@ -137,7 +142,7 @@ def writeSoln(U, V, W, P, T, time):
     dset = f.create_dataset("W", data = W)
     dset = f.create_dataset("T", data = T)
     dset = f.create_dataset("P", data = P)
-
+    dset = f.create_dataset("Time", data = time)
     f.close()
 
 writeSoln(U, V, W, P, T, time)
@@ -360,7 +365,7 @@ def PoissonSolver(rho):
     
     
         #if (jCnt % 100 == 0):
-        #    print(maxErr)
+        #    print(jCnt, maxErr)
     
         if maxErr < PoissonTolerance:
             #print(jCnt)
