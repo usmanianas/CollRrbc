@@ -13,7 +13,7 @@ import scipy.integrate as integrate
 #### Grid Parameters ###########################
 Lx, Ly, Lz = 1.0, 1.0, 1.0
 
-Nx = 33
+Nx = 16
 Ny, Nz = Nx, Nx
 
 hx, hy, hz = Lx/(Nx-1), Ly/(Ny-1), Lz/(Nz-1)
@@ -54,7 +54,7 @@ nu, kappa = np.sqrt(Pr/Ra), 1.0/np.sqrt(Ra*Pr)
 #########Simulation Parameters #########################
 dt = 0.01
 
-tMax = 1
+tMax = 1000
 
 # Number of iterations after which output must be printed to standard I/O
 opInt = 1
@@ -69,7 +69,7 @@ rwInt = 10
 VpTolerance = 1.0e-5
 
 # Tolerance value in Poisson iterations
-PoissonTolerance = 1.0e-4
+PoissonTolerance = 1.0e-3
 
 gssor = 1.0
 
@@ -377,7 +377,7 @@ def PoissonSolver(rho):
                                        idz2*(Pp[1:Nx-1, 1:Ny-1, 0:Nz-2] + Pp[1:Nx-1, 1:Ny-1, 2:Nz]))   
           
         
-        #imposePBCs(Pp)
+        imposePpBCs(Pp)
    
         maxErr = np.amax(np.fabs(rho[1:Nx-1, 1:Ny-1, 1:Nz-1] -((
                         (Pp[0:Nx-2, 1:Ny-1, 1:Nz-1] - 2.0*Pp[1:Nx-1, 1:Ny-1, 1:Nz-1] + Pp[2:Nx, 1:Ny-1, 1:Nz-1])/hx2 +
@@ -426,6 +426,11 @@ def imposePBCs(P):
     P[:, 0, :], P[:, -1, :] = P[:, 1, :], P[:, -2, :]
     P[:, :, 0], P[:, :, -1] = P[:, :, 1], P[:, :, -2]
 
+def imposePpBCs(Pp):
+    Pp[0, :, :], Pp[-1, :, :] = 0, 0#Pp[1, :, :], Pp[-2, :, :]
+    Pp[:, 0, :], Pp[:, -1, :] = 0, 0#Pp[:, 1, :], Pp[:, -2, :]
+    Pp[:, :, 0], Pp[:, :, -1] = 0, 0#Pp[:, :, 1], Pp[:, :, -2]    
+
 
 
 while True:
@@ -455,7 +460,7 @@ while True:
 
 
 
-    if abs(rwTime - time) < 0.5*dt:
+    if iCnt > 1 and abs(rwTime - time) < 0.5*dt:
         writeRestart(U, V, W, P, T, time)
         rwTime = rwTime + rwInt
 
@@ -500,6 +505,8 @@ while True:
     tp2 = datetime.now()
     #print(tp2-tp1)    
     P = P + Pp
+
+    #imposePpBCs(Pp)
 
     U[1:Nx-1, 1:Ny-1, 1:Nz-1] = U[1:Nx-1, 1:Ny-1, 1:Nz-1] - dt*(Pp[2:Nx, 1:Ny-1, 1:Nz-1] - Pp[0:Nx-2, 1:Ny-1, 1:Nz-1])/(2.0*hx)
     V[1:Nx-1, 1:Ny-1, 1:Nz-1] = V[1:Nx-1, 1:Ny-1, 1:Nz-1] - dt*(Pp[1:Nx-1, 2:Ny, 1:Nz-1] - Pp[1:Nx-1, 0:Ny-2, 1:Nz-1])/(2.0*hy)
