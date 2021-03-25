@@ -13,7 +13,7 @@ import scipy.integrate as integrate
 #### Grid Parameters ###########################
 Lx, Ly, Lz = 1.0, 1.0, 1.0
 
-Nx = 16
+Nx = 17
 Ny, Nz = Nx, Nx
 
 hx, hy, hz = Lx/(Nx-1), Ly/(Ny-1), Lz/(Nz-1)
@@ -54,7 +54,7 @@ nu, kappa = np.sqrt(Pr/Ra), 1.0/np.sqrt(Ra*Pr)
 #########Simulation Parameters #########################
 dt = 0.01
 
-tMax = 1000
+tMax = 500
 
 # Number of iterations after which output must be printed to standard I/O
 opInt = 1
@@ -69,7 +69,7 @@ rwInt = 10
 VpTolerance = 1.0e-5
 
 # Tolerance value in Poisson iterations
-PoissonTolerance = 1.0e-3
+PoissonTolerance = 1.0e-5
 
 gssor = 1.0
 
@@ -402,24 +402,24 @@ def PoissonSolver(rho):
 
 
 def imposeUBCs(U):
-    U[0, :, :], U[-1, :, :] = 0.0, 0.0
-    U[:, 0, :], U[:, -1, :] = 0.0, 0.0
-    U[:, :, 0], U[:, :, -1] = 0.0, 0.0
+    U[0, :, :], U[-1, :, :] = -U[1, :, :], -U[-2, :, :]#0.0, 0.0
+    U[:, 0, :], U[:, -1, :] = -U[:, 1, :], -U[:, -2, :]#0.0, 0.0
+    U[:, :, 0], U[:, :, -1] = -U[:, :, 1], -U[:, :, -2]#0.0, 0.0
 
 def imposeVBCs(V):
-    V[0, :, :], V[-1, :, :] = 0.0, 0.0  
-    V[:, 0, :], V[:, -1, :] = 0.0, 0.0  
-    V[:, :, 0], V[:, :, -1] = 0.0, 0.0
+    V[0, :, :], V[-1, :, :] = -V[1, :, :], -V[-2, :, :]#0.0, 0.0  
+    V[:, 0, :], V[:, -1, :] = -V[:, 1, :], -V[:, -2, :]#0.0, 0.0  
+    V[:, :, 0], V[:, :, -1] = -V[:, :, 1], -V[:, :, -2]#0.0, 0.0
 
 def imposeWBCs(W):
-    W[0, :, :], W[-1, :, :] = 0.0, 0.0, 
-    W[:, 0, :], W[:, -1, :] = 0.0, 0.0
-    W[:, :, 0], W[:, :, -1] = 0.0, 0.0  
+    W[0, :, :], W[-1, :, :] = -W[1, :, :], -W[-2, :, :]#0.0, 0.0, 
+    W[:, 0, :], W[:, -1, :] = -W[:, 1, :], -W[:, -2, :]#0.0, 0.0
+    W[:, :, 0], W[:, :, -1] = -W[:, :, 1], -W[:, :, -2]#0.0, 0.0  
 
 def imposeTBCs(T):
     T[0, :, :], T[-1, :, :] = T[1, :, :], T[-2, :, :]
     T[:, 0, :], T[:, -1, :] = T[:, 1, :], T[:, -2, :]
-    T[:, :, 0], T[:, :, -1] = 1.0, 0.0
+    T[:, :, 0], T[:, :, -1] = 2.0 - T[:, :, 1], -T[:, :, -2]#1.0, 0.0
 
 def imposePBCs(P):
     P[0, :, :], P[-1, :, :] = P[1, :, :], P[-2, :, :]
@@ -427,9 +427,9 @@ def imposePBCs(P):
     P[:, :, 0], P[:, :, -1] = P[:, :, 1], P[:, :, -2]
 
 def imposePpBCs(Pp):
-    Pp[0, :, :], Pp[-1, :, :] = 0, 0#Pp[1, :, :], Pp[-2, :, :]
-    Pp[:, 0, :], Pp[:, -1, :] = 0, 0#Pp[:, 1, :], Pp[:, -2, :]
-    Pp[:, :, 0], Pp[:, :, -1] = 0, 0#Pp[:, :, 1], Pp[:, :, -2]    
+    Pp[0, :, :], Pp[-1, :, :] = Pp[1, :, :], Pp[-2, :, :]
+    Pp[:, 0, :], Pp[:, -1, :] = Pp[:, 1, :], Pp[:, -2, :]
+    Pp[:, :, 0], Pp[:, :, -1] = Pp[:, :, 1], Pp[:, :, -2]    
 
 
 
@@ -456,7 +456,7 @@ while True:
         f.write("%f \t %f \t %f \t %f \n" %(time, Re, Nu, maxDiv))
         #f.close()
 
-        print("%f \t %f \t %f \t %f" %(time, Re, Nu, maxDiv))           
+        print("%f \t %.8f \t %.8f \t %.8f" %(time, Re, Nu, maxDiv))           
 
 
 
