@@ -13,7 +13,7 @@ import scipy.integrate as integrate
 #### Grid Parameters ###########################
 Lx, Ly, Lz = 1.0, 1.0, 1.0
 
-Nx = 17
+Nx = 16
 Ny, Nz = Nx, Nx
 
 hx, hy, hz = Lx/(Nx-1), Ly/(Ny-1), Lz/(Nz-1)
@@ -63,13 +63,13 @@ opInt = 1
 fwInt = 100
 
 # Restart File writing interval
-rwInt = 10
+rwInt = 100
 
 # Tolerance value in Jacobi iterations
 VpTolerance = 1.0e-5
 
 # Tolerance value in Poisson iterations
-PoissonTolerance = 1.0e-5
+PoissonTolerance = 1.0e-3
 
 gssor = 1.0
 
@@ -146,11 +146,11 @@ def writeSoln(U, V, W, P, T, time):
     print("#Writing solution file: ", fName)        
     f = hp.File(fName, "w")
 
-    dset = f.create_dataset("U", data = U)
-    dset = f.create_dataset("V", data = V)
-    dset = f.create_dataset("W", data = W)
-    dset = f.create_dataset("T", data = T)
-    dset = f.create_dataset("P", data = P)
+    dset = f.create_dataset("U", data = U[1:Nx-1, 1:Ny-1, 1:Nz-1])
+    dset = f.create_dataset("V", data = V[1:Nx-1, 1:Ny-1, 1:Nz-1])
+    dset = f.create_dataset("W", data = W[1:Nx-1, 1:Ny-1, 1:Nz-1])
+    dset = f.create_dataset("T", data = T[1:Nx-1, 1:Ny-1, 1:Nz-1])
+    dset = f.create_dataset("P", data = P[1:Nx-1, 1:Ny-1, 1:Nz-1])
     dset = f.create_dataset("Time", data = time)
     f.close()
 
@@ -309,7 +309,7 @@ def wJacobi(rho):
                         (W[1:Nx-1, 0:Ny-2, 1:Nz-1] - 2.0*W[1:Nx-1, 1:Ny-1, 1:Nz-1] + W[1:Nx-1, 2:Ny, 1:Nz-1])/hy2 +
                         (W[1:Nx-1, 1:Ny-1, 0:Nz-2] - 2.0*W[1:Nx-1, 1:Ny-1, 1:Nz-1] + W[1:Nx-1, 1:Ny-1, 2:Nz])/hz2))))
     
-        if maxErr < 1e-5:
+        if maxErr < VpTolerance:
             #print(jCnt)
             break
     
@@ -339,7 +339,6 @@ def TJacobi(rho):
                         (T[1:Nx-1, 0:Ny-2, 1:Nz-1] - 2.0*T[1:Nx-1, 1:Ny-1, 1:Nz-1] + T[1:Nx-1, 2:Ny, 1:Nz-1])/hy2 +
                         (T[1:Nx-1, 1:Ny-1, 0:Nz-2] - 2.0*T[1:Nx-1, 1:Ny-1, 1:Nz-1] + T[1:Nx-1, 1:Ny-1, 2:Nz])/hz2))))
     
-        #if maxErr < tolerance:
         if maxErr < VpTolerance:
             #print(jCnt)
             break
@@ -356,6 +355,7 @@ def TJacobi(rho):
 
 def PoissonSolver(rho):   
     #Ppp = np.zeros([Nx, Ny, Nz])
+    #Pp = np.zeros([Nx, Ny, Nz])
         
     jCnt = 0   
     while True:
@@ -437,13 +437,20 @@ while True:
 
     t1 = datetime.now()
 
+    imposeUBCs(U)                               
+    imposeVBCs(V)                               
+    imposeWBCs(W)                               
+    imposePBCs(P)                               
+    imposeTBCs(T)       
+
+
     if iCnt % opInt == 0:
-        uSqr = U**2.0 + V**2.0 + W**2.0
-        uInt = integrate.simps(integrate.simps(integrate.simps(uSqr, x), y), z)
+        uSqr = U[1:Nx-1, 1:Ny-1, 1:Nz-1]**2.0 + V[1:Nx-1, 1:Ny-1, 1:Nz-1]**2.0 + W[1:Nx-1, 1:Ny-1, 1:Nz-1]**2.0
+        uInt = integrate.simps(integrate.simps(integrate.simps(uSqr, x[1:Nx-1]), y[1:Ny-1]), z[1:Nz-1])
         Re = np.sqrt(uInt)/nu
 
-        wT = W*T
-        wTInt = integrate.simps(integrate.simps(integrate.simps(wT, x), y), z)
+        wT = W[1:Nx-1, 1:Ny-1, 1:Nz-1]*T[1:Nx-1, 1:Ny-1, 1:Nz-1]
+        wTInt = integrate.simps(integrate.simps(integrate.simps(wT, x[1:Nx-1]), y[1:Ny-1]), z[1:Nz-1])
         Nu = 1.0 + wTInt/kappa
 
         maxDiv = getDiv(U, V, W)
@@ -460,7 +467,7 @@ while True:
 
 
 
-    if iCnt > 1 and abs(rwTime - time) < 0.5*dt:
+    if  abs(rwTime - time) < 0.5*dt:
         writeRestart(U, V, W, P, T, time)
         rwTime = rwTime + rwInt
 
@@ -512,13 +519,9 @@ while True:
     V[1:Nx-1, 1:Ny-1, 1:Nz-1] = V[1:Nx-1, 1:Ny-1, 1:Nz-1] - dt*(Pp[1:Nx-1, 2:Ny, 1:Nz-1] - Pp[1:Nx-1, 0:Ny-2, 1:Nz-1])/(2.0*hy)
     W[1:Nx-1, 1:Ny-1, 1:Nz-1] = W[1:Nx-1, 1:Ny-1, 1:Nz-1] - dt*(Pp[1:Nx-1, 1:Ny-1, 2:Nz] - Pp[1:Nx-1, 1:Ny-1, 0:Nz-2])/(2.0*hz)
 
-    imposeUBCs(U)                               
-    imposeVBCs(V)                               
-    imposeWBCs(W)                               
-    imposePBCs(P)                               
-    imposeTBCs(T)       
-
-    if time > tMax:
+ 
+    if abs(time - tMax) < 0.5*dt:
+        print("Simulation completed!")
         break   
 
     time = time + dt
