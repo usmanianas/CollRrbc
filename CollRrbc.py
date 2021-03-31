@@ -13,7 +13,7 @@ import scipy.integrate as integrate
 #### Grid Parameters ###########################
 Lx, Ly, Lz = 1.0, 1.0, 1.0
 
-Nx = 16
+Nx = 33
 Ny, Nz = Nx, Nx
 
 hx, hy, hz = Lx/(Nx-1), Ly/(Ny-1), Lz/(Nz-1)
@@ -36,7 +36,7 @@ Ra = 1.0e4
 
 Pr = 1
 
-Ta = 0.0e7
+Ta = 0e5
 
 print("#", "Ra=", Ra, "Pr=", Pr, "Ta=", Ta)
 
@@ -54,22 +54,22 @@ nu, kappa = np.sqrt(Pr/Ra), 1.0/np.sqrt(Ra*Pr)
 #########Simulation Parameters #########################
 dt = 0.01
 
-tMax = 500
+tMax = 1000
 
 # Number of iterations after which output must be printed to standard I/O
 opInt = 1
 
 # Solution File writing interval
-fwInt = 100
+fwInt = 50
 
 # Restart File writing interval
-rwInt = 100
+rwInt = 10
 
 # Tolerance value in Jacobi iterations
 VpTolerance = 1.0e-5
 
 # Tolerance value in Poisson iterations
-PoissonTolerance = 1.0e-3
+PoissonTolerance = 1.0e-5
 
 gssor = 1.0
 
@@ -109,11 +109,11 @@ else:
 
     T[:, :, 0:Nz] = 1 - z[0:Nz]
 
-    U = np.zeros([Nx, Ny, Nz])
+    U = np.zeros([Nx, Ny, Nz]) #np.random.rand(Nx, Ny, Nz) #
 
-    V = np.zeros([Nx, Ny, Nz])
+    V = np.zeros([Nx, Ny, Nz]) #np.random.rand(Nx, Ny, Nz) #
 
-    W = np.zeros([Nx, Ny, Nz])
+    W = np.zeros([Nx, Ny, Nz]) #np.random.rand(Nx, Ny, Nz) #
 
 
 Pp = np.zeros([Nx, Ny, Nz])
@@ -146,9 +146,9 @@ def writeSoln(U, V, W, P, T, time):
     print("#Writing solution file: ", fName)        
     f = hp.File(fName, "w")
 
-    dset = f.create_dataset("U", data = U[1:Nx-1, 1:Ny-1, 1:Nz-1])
-    dset = f.create_dataset("V", data = V[1:Nx-1, 1:Ny-1, 1:Nz-1])
-    dset = f.create_dataset("W", data = W[1:Nx-1, 1:Ny-1, 1:Nz-1])
+    dset = f.create_dataset("Vx", data = U[1:Nx-1, 1:Ny-1, 1:Nz-1])
+    dset = f.create_dataset("Vy", data = V[1:Nx-1, 1:Ny-1, 1:Nz-1])
+    dset = f.create_dataset("Vz", data = W[1:Nx-1, 1:Ny-1, 1:Nz-1])
     dset = f.create_dataset("T", data = T[1:Nx-1, 1:Ny-1, 1:Nz-1])
     dset = f.create_dataset("P", data = P[1:Nx-1, 1:Ny-1, 1:Nz-1])
     dset = f.create_dataset("Time", data = time)
@@ -246,12 +246,12 @@ def uJacobi(rho):
                             (U[0:Nx-2, 1:Ny-1, 1:Nz-1] - 2.0*U[1:Nx-1, 1:Ny-1, 1:Nz-1] + U[2:Nx, 1:Ny-1, 1:Nz-1])/hx2 +
                             (U[1:Nx-1, 0:Ny-2, 1:Nz-1] - 2.0*U[1:Nx-1, 1:Ny-1, 1:Nz-1] + U[1:Nx-1, 2:Ny, 1:Nz-1])/hy2 +
                             (U[1:Nx-1, 1:Ny-1, 0:Nz-2] - 2.0*U[1:Nx-1, 1:Ny-1, 1:Nz-1] + U[1:Nx-1, 1:Ny-1, 2:Nz])/hz2))))
-        
+
+        jCnt += 1        
         if maxErr < VpTolerance:
             #print(jCnt)
             break
         
-        jCnt += 1
         if jCnt > maxCount:
                 print("ERROR: Jacobi not converging in U. Aborting")
                 print("Maximum error: ", maxErr)
@@ -277,12 +277,12 @@ def vJacobi(rho):
                         (V[0:Nx-2, 1:Ny-1, 1:Nz-1] - 2.0*V[1:Nx-1, 1:Ny-1, 1:Nz-1] + V[2:Nx, 1:Ny-1, 1:Nz-1])/hx2 +
                         (V[1:Nx-1, 0:Ny-2, 1:Nz-1] - 2.0*V[1:Nx-1, 1:Ny-1, 1:Nz-1] + V[1:Nx-1, 2:Ny, 1:Nz-1])/hy2 +
                         (V[1:Nx-1, 1:Ny-1, 0:Nz-2] - 2.0*V[1:Nx-1, 1:Ny-1, 1:Nz-1] + V[1:Nx-1, 1:Ny-1, 2:Nz])/hz2))))
-    
+        
+        jCnt += 1    
         if maxErr < VpTolerance:
             #print(jCnt)
             break
     
-        jCnt += 1
         if jCnt > maxCount:
             print("ERROR: Jacobi not converging in V. Aborting")
             print("Maximum error: ", maxErr)
@@ -308,12 +308,12 @@ def wJacobi(rho):
                         (W[0:Nx-2, 1:Ny-1, 1:Nz-1] - 2.0*W[1:Nx-1, 1:Ny-1, 1:Nz-1] + W[2:Nx, 1:Ny-1, 1:Nz-1])/hx2 +
                         (W[1:Nx-1, 0:Ny-2, 1:Nz-1] - 2.0*W[1:Nx-1, 1:Ny-1, 1:Nz-1] + W[1:Nx-1, 2:Ny, 1:Nz-1])/hy2 +
                         (W[1:Nx-1, 1:Ny-1, 0:Nz-2] - 2.0*W[1:Nx-1, 1:Ny-1, 1:Nz-1] + W[1:Nx-1, 1:Ny-1, 2:Nz])/hz2))))
-    
+        
+        jCnt += 1
         if maxErr < VpTolerance:
             #print(jCnt)
             break
     
-        jCnt += 1
         if jCnt > maxCount:
             print("ERROR: Jacobi not converging in W. Aborting")
             print("Maximum error: ", maxErr)
@@ -338,12 +338,12 @@ def TJacobi(rho):
                         (T[0:Nx-2, 1:Ny-1, 1:Nz-1] - 2.0*T[1:Nx-1, 1:Ny-1, 1:Nz-1] + T[2:Nx, 1:Ny-1, 1:Nz-1])/hx2 +
                         (T[1:Nx-1, 0:Ny-2, 1:Nz-1] - 2.0*T[1:Nx-1, 1:Ny-1, 1:Nz-1] + T[1:Nx-1, 2:Ny, 1:Nz-1])/hy2 +
                         (T[1:Nx-1, 1:Ny-1, 0:Nz-2] - 2.0*T[1:Nx-1, 1:Ny-1, 1:Nz-1] + T[1:Nx-1, 1:Ny-1, 2:Nz])/hz2))))
-    
+
+        jCnt += 1    
         if maxErr < VpTolerance:
             #print(jCnt)
             break
     
-        jCnt += 1
         if jCnt > maxCount:
             print("ERROR: Jacobi not converging in T. Aborting")
             print("Maximum error: ", maxErr)
@@ -355,7 +355,7 @@ def TJacobi(rho):
 
 def PoissonSolver(rho):   
     #Ppp = np.zeros([Nx, Ny, Nz])
-    #Pp = np.zeros([Nx, Ny, Nz])
+    Pp = np.zeros([Nx, Ny, Nz])
         
     jCnt = 0   
     while True:
@@ -371,28 +371,32 @@ def PoissonSolver(rho):
                                        idz2*(Pp[i, j, k+1] + Pp[i, j, k-1]))                    
         '''       
 
+
+        #print(np.amax(rho), maxErr)
+
         Pp[1:Nx-1, 1:Ny-1, 1:Nz-1] = (1.0/(-2.0*(idx2 + idy2 + idz2))) * (rho[1:Nx-1, 1:Ny-1, 1:Nz-1] - 
                                        idx2*(Pp[0:Nx-2, 1:Ny-1, 1:Nz-1] + Pp[2:Nx, 1:Ny-1, 1:Nz-1]) -
                                        idy2*(Pp[1:Nx-1, 0:Ny-2, 1:Nz-1] + Pp[1:Nx-1, 2:Ny, 1:Nz-1]) -
                                        idz2*(Pp[1:Nx-1, 1:Ny-1, 0:Nz-2] + Pp[1:Nx-1, 1:Ny-1, 2:Nz]))   
-          
-        
+                  
         imposePpBCs(Pp)
    
         maxErr = np.amax(np.fabs(rho[1:Nx-1, 1:Ny-1, 1:Nz-1] -((
                         (Pp[0:Nx-2, 1:Ny-1, 1:Nz-1] - 2.0*Pp[1:Nx-1, 1:Ny-1, 1:Nz-1] + Pp[2:Nx, 1:Ny-1, 1:Nz-1])/hx2 +
                         (Pp[1:Nx-1, 0:Ny-2, 1:Nz-1] - 2.0*Pp[1:Nx-1, 1:Ny-1, 1:Nz-1] + Pp[1:Nx-1, 2:Ny, 1:Nz-1])/hy2 +
                         (Pp[1:Nx-1, 1:Ny-1, 0:Nz-2] - 2.0*Pp[1:Nx-1, 1:Ny-1, 1:Nz-1] + Pp[1:Nx-1, 1:Ny-1, 2:Nz])/hz2))))
+
     
     
         #if (jCnt % 100 == 0):
         #    print(jCnt, maxErr)
+
+        jCnt += 1
     
         if maxErr < PoissonTolerance:
-            #print(jCnt)
+            print(jCnt)
             break
     
-        jCnt += 1
         if jCnt > maxCount:
             print("ERROR: Poisson solver not converging. Aborting")
             quit()
@@ -400,26 +404,56 @@ def PoissonSolver(rho):
     return Pp     
 
 
-
+'''
 def imposeUBCs(U):
-    U[0, :, :], U[-1, :, :] = -U[1, :, :], -U[-2, :, :]#0.0, 0.0
-    U[:, 0, :], U[:, -1, :] = -U[:, 1, :], -U[:, -2, :]#0.0, 0.0
-    U[:, :, 0], U[:, :, -1] = -U[:, :, 1], -U[:, :, -2]#0.0, 0.0
-
+    U[0, :, :], U[-1, :, :] = 0, 0
+    U[:, 0, :], U[:, -1, :] = 0, 0
+    U[:, :, 0], U[:, :, -1] = 0, 0
 def imposeVBCs(V):
-    V[0, :, :], V[-1, :, :] = -V[1, :, :], -V[-2, :, :]#0.0, 0.0  
-    V[:, 0, :], V[:, -1, :] = -V[:, 1, :], -V[:, -2, :]#0.0, 0.0  
-    V[:, :, 0], V[:, :, -1] = -V[:, :, 1], -V[:, :, -2]#0.0, 0.0
+    V[0, :, :], V[-1, :, :] = 0, 0
+    V[:, 0, :], V[:, -1, :] = 0, 0
+    V[:, :, 0], V[:, :, -1] = 0, 0
 
 def imposeWBCs(W):
-    W[0, :, :], W[-1, :, :] = -W[1, :, :], -W[-2, :, :]#0.0, 0.0, 
-    W[:, 0, :], W[:, -1, :] = -W[:, 1, :], -W[:, -2, :]#0.0, 0.0
-    W[:, :, 0], W[:, :, -1] = -W[:, :, 1], -W[:, :, -2]#0.0, 0.0  
+    W[0, :, :], W[-1, :, :] = 0, 0
+    W[:, 0, :], W[:, -1, :] = 0, 0
+    W[:, :, 0], W[:, :, -1] = 0, 0
+def imposeTBCs(T):
+    T[0, :, :], T[-1, :, :] = T[1, :, :], T[-2, :, :]
+    T[:, 0, :], T[:, -1, :] = T[:, 1, :], T[:, -2, :]
+    T[:, :, 0], T[:, :, -1] = 1, 0
+
+def imposePBCs(P):
+    P[0, :, :], P[-1, :, :] = P[1, :, :], P[-2, :, :]
+    P[:, 0, :], P[:, -1, :] = P[:, 1, :], P[:, -2, :]
+    P[:, :, 0], P[:, :, -1] = P[:, :, 1], P[:, :, -2]
+
+def imposePpBCs(Pp):
+    Pp[0, :, :], Pp[-1, :, :] = 0, 0 #Pp[1, :, :], Pp[-2, :, :]
+    Pp[:, 0, :], Pp[:, -1, :] = 0, 0 #Pp[:, 1, :], Pp[:, -2, :]
+    Pp[:, :, 0], Pp[:, :, -1] = 0, 0 #Pp[:, :, 1], Pp[:, :, -2]    
+'''
+
+
+def imposeUBCs(U):
+    U[0, :, :], U[-1, :, :] = -U[1, :, :], -U[-2, :, :]
+    U[:, 0, :], U[:, -1, :] = -U[:, 1, :], -U[:, -2, :]
+    U[:, :, 0], U[:, :, -1] = -U[:, :, 1], -U[:, :, -2]
+
+def imposeVBCs(V):
+    V[0, :, :], V[-1, :, :] = -V[1, :, :], -V[-2, :, :]
+    V[:, 0, :], V[:, -1, :] = -V[:, 1, :], -V[:, -2, :]
+    V[:, :, 0], V[:, :, -1] = -V[:, :, 1], -V[:, :, -2]
+
+def imposeWBCs(W):
+    W[0, :, :], W[-1, :, :] = -W[1, :, :], -W[-2, :, :]
+    W[:, 0, :], W[:, -1, :] = -W[:, 1, :], -W[:, -2, :]
+    W[:, :, 0], W[:, :, -1] = -W[:, :, 1], -W[:, :, -2]
 
 def imposeTBCs(T):
     T[0, :, :], T[-1, :, :] = T[1, :, :], T[-2, :, :]
     T[:, 0, :], T[:, -1, :] = T[:, 1, :], T[:, -2, :]
-    T[:, :, 0], T[:, :, -1] = 2.0 - T[:, :, 1], -T[:, :, -2]#1.0, 0.0
+    T[:, :, 0], T[:, :, -1] = 2.0 - T[:, :, 1], -T[:, :, -2]
 
 def imposePBCs(P):
     P[0, :, :], P[-1, :, :] = P[1, :, :], P[-2, :, :]
@@ -429,7 +463,7 @@ def imposePBCs(P):
 def imposePpBCs(Pp):
     Pp[0, :, :], Pp[-1, :, :] = Pp[1, :, :], Pp[-2, :, :]
     Pp[:, 0, :], Pp[:, -1, :] = Pp[:, 1, :], Pp[:, -2, :]
-    Pp[:, :, 0], Pp[:, :, -1] = Pp[:, :, 1], Pp[:, :, -2]    
+    Pp[:, :, 0], Pp[:, :, -1] = Pp[:, :, 1], Pp[:, :, -2]        
 
 
 
