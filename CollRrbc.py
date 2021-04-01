@@ -13,14 +13,14 @@ import scipy.integrate as integrate
 #### Grid Parameters ###########################
 Lx, Ly, Lz = 1.0, 1.0, 1.0
 
-Nx = 33
+Nx = 22
 Ny, Nz = Nx, Nx
 
-hx, hy, hz = Lx/(Nx-1), Ly/(Ny-1), Lz/(Nz-1)
+hx, hy, hz = Lx/(Nx-2), Ly/(Ny-2), Lz/(Nz-2)
 
-x = np.linspace(0, 1, Nx, endpoint=True)        
-y = np.linspace(0, 1, Ny, endpoint=True)
-z = np.linspace(0, 1, Nz, endpoint=True)    
+x = np.linspace(-hx/2, 1+hx/2, Nx, endpoint=True)        
+y = np.linspace(-hy/2, 1+hy/2, Ny, endpoint=True)
+z = np.linspace(-hz/2, 1+hz/2, Nz, endpoint=True)
 
 hx2, hy2, hz2 = hx*hx, hy*hy, hz*hz
 
@@ -32,9 +32,9 @@ print('# Grid', Nx, Ny, Nz)
 
 
 #### Flow Parameters #############
-Ra = 1.0e4
+Ra = 1e4
 
-Pr = 1
+Pr = 0.71
 
 Ta = 0e5
 
@@ -60,10 +60,10 @@ tMax = 1000
 opInt = 1
 
 # Solution File writing interval
-fwInt = 50
+fwInt = 200
 
 # Restart File writing interval
-rwInt = 10
+rwInt = 200
 
 # Tolerance value in Jacobi iterations
 VpTolerance = 1.0e-5
@@ -107,7 +107,9 @@ else:
 
     T = np.zeros([Nx, Ny, Nz])
 
-    T[:, :, 0:Nz] = 1 - z[0:Nz]
+    #T[1:Nx-1, 1:Ny-1, 1:Nz-1] = (1.0 - 0.5/(Nz-1)) - z[1:Nz-1]
+
+    #print(T[5, 5, 1:Nz-1])
 
     U = np.zeros([Nx, Ny, Nz]) #np.random.rand(Nx, Ny, Nz) #
 
