@@ -9,46 +9,15 @@ import random
 import scipy.integrate as integrate
 
 
-#### Grid Parameters ###########################
-Lx, Ly, Lz = 1.0, 1.0, 1.0
-
-# Size index: 0 1 2 3  4  5  6  7   8   9   10   11   12   13    14
-# Grid sizes: 1 2 4 8 16 32 64 128 256 512 1024 2048 4096 8192 16384
-
-sInd = np.array([5, 5, 5])
-
-# N should be of the form 2^n
-# Then there will be 2^n + 2 points, including two ghost points
-sLst = [2**x for x in range(12)]
-
-Nx, Ny, Nz = sLst[sInd[0]]+2, sLst[sInd[1]]+2, sLst[sInd[2]]+2
-
-hx, hy, hz = Lx/(Nx-2), Ly/(Ny-2), Lz/(Nz-2)
-
-x = np.linspace(-hx/2, 1+hx/2, Nx, endpoint=True)        
-y = np.linspace(-hy/2, 1+hy/2, Ny, endpoint=True)
-z = np.linspace(-hz/2, 1+hz/2, Nz, endpoint=True)
-
-
-
-hx2, hy2, hz2 = hx*hx, hy*hy, hz*hz
-
-idx2, idy2, idz2 = 1.0/hx2, 1.0/hy2, 1.0/hz2
-
-print()
-print('# Grid', Nx, Ny, Nz)
-#############################################################
-
-
-
 #### Flow Parameters #############
 Ra = 1e4
 
-Pr = 0.71   #0.786
+Pr = 0.71   #0.786 #0.71
 
 Ta = 0e5
 
-print("#", "Ra=", Ra, "Pr=", Pr, "Ta=", Ta)
+print()
+print("#", "Ra=%.1e" %Ra, "Pr=%.3f" %Pr, "Ta=%.1e" %Ta)
 
 #Ro = np.sqrt(Ra/(Ta*Pr))
 
@@ -59,11 +28,21 @@ nu, kappa = np.sqrt(Pr/Ra), 1.0/np.sqrt(Ra*Pr)
 #########################################################
 
 
+#### Grid Parameters ###########################
+Lx, Ly, Lz = 1.0, 1.0, 1.0
+
+# Size index: 0 1 2 3  4  5  6  7   8   9   10   11   12   13    14
+# Grid sizes: 1 2 4 8 16 32 64 128 256 512 1024 2048 4096 8192 16384
+
+sInd = np.array([5, 5, 5])
+
+#######################################
+
 
 #########Simulation Parameters #########################
 dt = 0.01
 
-tMax = 1050
+tMax = 1000
 
 # Number of iterations after which output must be printed to standard I/O
 opInt = 1
@@ -85,21 +64,47 @@ gssor = 1.0
 maxCount = 1e4
 
 print('# Tolerance', VpTolerance, PoissonTolerance)
-print()
 #################################################
 
 
+restart = 0   # 0-Fresh, 1-Restart
 
-###############Multigrid########################
+
+###############Multigrid Parameters########################
 
 # Depth of each V-cycle in multigrid
-VDepth = min(sInd) - 1
+VDepth = 2 #min(sInd) - 1
 
 # Number of iterations during pre-smoothing
 preSm = 5
 
 # Number of iterations during post-smoothing
 pstSm = 20
+
+
+
+
+# N should be of the form 2^n
+# Then there will be 2^n + 2 points, including two ghost points
+sLst = [2**x for x in range(12)]
+
+Nx, Ny, Nz = sLst[sInd[0]] + 2, sLst[sInd[1]] + 2, sLst[sInd[2]] + 2
+
+hx, hy, hz = Lx/(Nx-2), Ly/(Ny-2), Lz/(Nz-2)
+
+x = np.linspace(-hx/2, Lx + hx/2, Nx, endpoint=True)        
+y = np.linspace(-hy/2, Ly + hy/2, Ny, endpoint=True)
+z = np.linspace(-hz/2, Lz + hz/2, Nz, endpoint=True)
+
+hx2, hy2, hz2 = hx*hx, hy*hy, hz*hz
+
+idx2, idy2, idz2 = 1.0/hx2, 1.0/hy2, 1.0/hz2
+
+print('# Grid', Nx, Ny, Nz)
+print('# Aspect ratio =',Ly/Lz)
+print()
+#############################################################
+
 
 # Get array of grid sizes are tuples corresponding to each level of V-Cycle
 N = [(sLst[x[0]], sLst[x[1]], sLst[x[2]]) for x in [sInd - y for y in range(VDepth + 1)]]
@@ -256,7 +261,7 @@ def solve():
 
 		jCnt += 1
 		if jCnt > maxCount:
-			print("ERROR: Jacobi not converging. Aborting")
+			print("ERROR: Poisson solver not converging. Aborting")
 			quit()
 
 	imposePpBCs(pData[vLev])
@@ -357,7 +362,7 @@ def Poisson_MG(H):
 
 		v_cycle()
 
-		if vcCnt > 500:
+		if vcCnt > 100:
 			print("Poisson solver not converging")
 			quit()
 
@@ -374,9 +379,6 @@ def Poisson_MG(H):
 
 	return pData[0]
 
-
-
-restart = 1   # 0-Fresh, 1-Restart
 
 if restart == 1:
     filename = "Restart.h5"
