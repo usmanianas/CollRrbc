@@ -33,8 +33,8 @@ Lx, Ly, Lz = 1.0, 1.0, 1.0
 
 # Size index: 0 1 2 3  4  5  6  7   8   9   10   11   12   13    14
 # Grid sizes: 1 2 4 8 16 32 64 128 256 512 1024 2048 4096 8192 16384
-n = 5
-sInd = np.array([n, n, n])
+gn = 5
+sInd = np.array([gn, gn, gn])
 
 #######################################
 
@@ -42,7 +42,7 @@ sInd = np.array([n, n, n])
 #########Simulation Parameters #########################
 dt = 0.01
 
-tMax = 500
+tMax = 1.0
 
 # Number of iterations after which output must be printed to standard I/O
 opInt = 1
@@ -59,7 +59,7 @@ VpTolerance = 1.0e-5
 # Tolerance value in Poisson iterations
 PoissonTolerance = 1.0e-5
 
-gssor = 1.0
+gssor = 1.9
 
 maxCount = 1e6
 
@@ -76,10 +76,10 @@ restart = 0   # 0-Fresh, 1-Restart
 VDepth = min(sInd) - 1
 
 # Number of iterations during pre-smoothing
-preSm = 20
+preSm = 5
 
 # Number of iterations during post-smoothing
-pstSm = 25
+pstSm = 20
 
 
 # N should be of the form 2^n
@@ -174,14 +174,66 @@ def smooth(sCount):
     for iCnt in range(sCount):
         
         imposePpBCs(pData[vLev])
+
+        # Vectorized Red-Black Gauss-Seidel
+        # Update red cells
+        # 0, 0, 0 configuration
+        pData[vLev][1:-1:2, 1:-1:2, 1:-1:2] = (hyhz[vLev]*(pData[vLev][2::2, 1:-1:2, 1:-1:2] + pData[vLev][:-2:2, 1:-1:2, 1:-1:2]) +
+                                               hzhx[vLev]*(pData[vLev][1:-1:2, 2::2, 1:-1:2] + pData[vLev][1:-1:2, :-2:2, 1:-1:2]) +
+                                               hxhy[vLev]*(pData[vLev][1:-1:2, 1:-1:2, 2::2] + pData[vLev][1:-1:2, 1:-1:2, :-2:2]) -
+                                              hxhyhz[vLev]*rData[vLev][1:-1:2, 1:-1:2, 1:-1:2]) * gsFactor[vLev]
+
+        # 1, 1, 0 configuration
+        pData[vLev][2::2, 2::2, 1:-1:2] = (hyhz[vLev]*(pData[vLev][3::2, 2::2, 1:-1:2] + pData[vLev][1:-1:2, 2::2, 1:-1:2]) +
+                                           hzhx[vLev]*(pData[vLev][2::2, 3::2, 1:-1:2] + pData[vLev][2::2, 1:-1:2, 1:-1:2]) +
+                                           hxhy[vLev]*(pData[vLev][2::2, 2::2, 2::2] + pData[vLev][2::2, 2::2, :-2:2]) -
+                                          hxhyhz[vLev]*rData[vLev][2::2, 2::2, 1:-1:2]) * gsFactor[vLev]
+
+        # 1, 0, 1 configuration
+        pData[vLev][2::2, 1:-1:2, 2::2] = (hyhz[vLev]*(pData[vLev][3::2, 1:-1:2, 2::2] + pData[vLev][1:-1:2, 1:-1:2, 2::2]) +
+                                           hzhx[vLev]*(pData[vLev][2::2, 2::2, 2::2] + pData[vLev][2::2, :-2:2, 2::2]) +
+                                           hxhy[vLev]*(pData[vLev][2::2, 1:-1:2, 3::2] + pData[vLev][2::2, 1:-1:2, 1:-1:2]) -
+                                          hxhyhz[vLev]*rData[vLev][2::2, 1:-1:2, 2::2]) * gsFactor[vLev]
+
+        # 0, 1, 1 configuration
+        pData[vLev][1:-1:2, 2::2, 2::2] = (hyhz[vLev]*(pData[vLev][2::2, 2::2, 2::2] + pData[vLev][:-2:2, 2::2, 2::2]) +
+                                           hzhx[vLev]*(pData[vLev][1:-1:2, 3::2, 2::2] + pData[vLev][1:-1:2, 1:-1:2, 2::2]) +
+                                           hxhy[vLev]*(pData[vLev][1:-1:2, 2::2, 3::2] + pData[vLev][1:-1:2, 2::2, 1:-1:2]) -
+                                          hxhyhz[vLev]*rData[vLev][1:-1:2, 2::2, 2::2]) * gsFactor[vLev]
+
+        # Update black cells
+        # 1, 0, 0 configuration
+        pData[vLev][2::2, 1:-1:2, 1:-1:2] = (hyhz[vLev]*(pData[vLev][3::2, 1:-1:2, 1:-1:2] + pData[vLev][1:-1:2, 1:-1:2, 1:-1:2]) +
+                                             hzhx[vLev]*(pData[vLev][2::2, 2::2, 1:-1:2] + pData[vLev][2::2, :-2:2, 1:-1:2]) +
+                                             hxhy[vLev]*(pData[vLev][2::2, 1:-1:2, 2::2] + pData[vLev][2::2, 1:-1:2, :-2:2]) -
+                                            hxhyhz[vLev]*rData[vLev][2::2, 1:-1:2, 1:-1:2]) * gsFactor[vLev]
+
+        # 0, 1, 0 configuration
+        pData[vLev][1:-1:2, 2::2, 1:-1:2] = (hyhz[vLev]*(pData[vLev][2::2, 2::2, 1:-1:2] + pData[vLev][:-2:2, 2::2, 1:-1:2]) +
+                                             hzhx[vLev]*(pData[vLev][1:-1:2, 3::2, 1:-1:2] + pData[vLev][1:-1:2, 1:-1:2, 1:-1:2]) +
+                                             hxhy[vLev]*(pData[vLev][1:-1:2, 2::2, 2::2] + pData[vLev][1:-1:2, 2::2, :-2:2]) -
+                                            hxhyhz[vLev]*rData[vLev][1:-1:2, 2::2, 1:-1:2]) * gsFactor[vLev]
+
+        # 0, 0, 1 configuration
+        pData[vLev][1:-1:2, 1:-1:2, 2::2] = (hyhz[vLev]*(pData[vLev][2::2, 1:-1:2, 2::2] + pData[vLev][:-2:2, 1:-1:2, 2::2]) +
+                                             hzhx[vLev]*(pData[vLev][1:-1:2, 2::2, 2::2] + pData[vLev][1:-1:2, :-2:2, 2::2]) +
+                                             hxhy[vLev]*(pData[vLev][1:-1:2, 1:-1:2, 3::2] + pData[vLev][1:-1:2, 1:-1:2, 1:-1:2]) -
+                                            hxhyhz[vLev]*rData[vLev][1:-1:2, 1:-1:2, 2::2]) * gsFactor[vLev]
+
+        # 1, 1, 1 configuration
+        pData[vLev][2::2, 2::2, 2::2] = (hyhz[vLev]*(pData[vLev][3::2, 2::2, 2::2] + pData[vLev][1:-1:2, 2::2, 2::2]) +
+                                         hzhx[vLev]*(pData[vLev][2::2, 3::2, 2::2] + pData[vLev][2::2, 1:-1:2, 2::2]) +
+                                         hxhy[vLev]*(pData[vLev][2::2, 2::2, 3::2] + pData[vLev][2::2, 2::2, 1:-1:2]) -
+                                        hxhyhz[vLev]*rData[vLev][2::2, 2::2, 2::2]) * gsFactor[vLev]
         
-        
+        '''
+
         pData[vLev][1:-1, 1:-1, 1:-1] = (hyhz[vLev]*(pData[vLev][2:n[0]+2, 1:n[1]+1, 1:n[2]+1] + pData[vLev][0:n[0], 1:n[1]+1, 1:n[2]+1]) +
                                                      hzhx[vLev]*(pData[vLev][1:n[0]+1, 2:n[1]+2, 1:n[2]+1] + pData[vLev][1:n[0]+1, 0:n[1], 1:n[2]+1]) +
                                                      hxhy[vLev]*(pData[vLev][1:n[0]+1, 1:n[1]+1, 2:n[2]+2] + pData[vLev][1:n[0]+1, 1:n[1]+1, 0:n[2]]) -
                                                      hxhyhz[vLev]*rData[vLev][1:-1, 1:-1, 1:-1]) * gsFactor[vLev]
-
-        '''
+        
+        
         # Gauss-Seidel smoothing
         for i in range(1, n[0]+1):
             for j in range(1, n[1]+1):
@@ -237,6 +289,12 @@ def solve():
     while True:
         imposePpBCs(pData[vLev])
 
+        maxErr = np.amax(np.abs(rData[vLev] - laplace(pData[vLev])))
+
+        if maxErr < PoissonTolerance:
+            #print(jCnt)
+            break
+
         
         pData[vLev][1:-1, 1:-1, 1:-1] = (hyhz[vLev]*(pData[vLev][2:n[0]+2, 1:n[1]+1, 1:n[2]+1] + pData[vLev][0:n[0], 1:n[1]+1, 1:n[2]+1]) +
                                                      hzhx[vLev]*(pData[vLev][1:n[0]+1, 2:n[1]+2, 1:n[2]+1] + pData[vLev][1:n[0]+1, 0:n[1], 1:n[2]+1]) +
@@ -254,12 +312,9 @@ def solve():
                                           hxhyhz[vLev]*rData[vLev][i-1, j-1, k-1]) * gsFactor[vLev]
         '''
 
-        maxErr = np.amax(np.abs(rData[vLev] - laplace(pData[vLev])))
-        if maxErr < PoissonTolerance:
-            #print(vLev, jCnt)
-            break
-
         jCnt += 1
+
+
         if jCnt > maxCount:
             print("ERROR: Poisson solver not converging. Aborting")
             quit()
@@ -421,6 +476,7 @@ else:
 
 Pp = np.zeros([Nx+2, Ny+2, Nz+2])
 divMat = np.zeros([Nx+2, Ny+2, Nz+2])
+rhs = np.zeros([Nx+2, Ny+2, Nz+2])
 
 
 Hx = np.zeros_like(U)
@@ -656,8 +712,8 @@ def TJacobi(rho):
 
 
 def Poisson_Jacobi(rho):   
-    #Ppp = np.zeros([Nx, Ny, Nz])
-    Pp = np.zeros([Nx, Ny, Nz])
+    Ppp = np.zeros([Nx+2, Ny+2, Nz+2])
+    Pp = np.zeros([Nx+2, Ny+2, Nz+2])
         
     jCnt = 0   
     while True:
@@ -672,14 +728,72 @@ def Poisson_Jacobi(rho):
                                        idy2*(Pp[i, j+1, k] + Pp[i, j-1, k]) -
                                        idz2*(Pp[i, j, k+1] + Pp[i, j, k-1]))                    
         '''       
-
         #print(np.amax(rho), maxErr)
+        
+        Ppp = Pp.copy()
+        # Vectorized Red-Black Gauss-Seidel
+        # Update red cells
+        # 0, 0, 0 configuration
+        Pp[1:-1:2, 1:-1:2, 1:-1:2] = (1.0-gssor)*Ppp[1:-1:2, 1:-1:2, 1:-1:2] + (gssor/(-2.0*(idx2 + idy2 + idz2))) * (rho[1:-1:2, 1:-1:2, 1:-1:2] - 
+                                       idx2*(Pp[2::2, 1:-1:2, 1:-1:2] + Pp[:-2:2, 1:-1:2, 1:-1:2]) -
+                                       idy2*(Pp[1:-1:2, 2::2, 1:-1:2] + Pp[1:-1:2, :-2:2, 1:-1:2]) -
+                                       idz2*(Pp[1:-1:2, 1:-1:2, 2::2] + Pp[1:-1:2, 1:-1:2, :-2:2]))
 
+
+        # 1, 1, 0 configuration
+        Pp[2::2, 2::2, 1:-1:2] = (1.0-gssor)*Ppp[2::2, 2::2, 1:-1:2] + (gssor/(-2.0*(idx2 + idy2 + idz2))) * (rho[2::2, 2::2, 1:-1:2] - 
+                                       idx2*(Pp[3::2, 2::2, 1:-1:2] + Pp[1:-1:2, 2::2, 1:-1:2]) -
+                                       idy2*(Pp[2::2, 3::2, 1:-1:2] + Pp[2::2, 1:-1:2, 1:-1:2]) -
+                                       idz2*(Pp[2::2, 2::2, 2::2] + Pp[2::2, 2::2, :-2:2]))
+
+
+        # 1, 0, 1 configuration
+        Pp[2::2, 1:-1:2, 2::2] = (1.0-gssor)*Ppp[2::2, 1:-1:2, 2::2] + (gssor/(-2.0*(idx2 + idy2 + idz2))) * (rho[2::2, 1:-1:2, 2::2] - 
+                                       idx2*(Pp[3::2, 1:-1:2, 2::2] + Pp[1:-1:2, 1:-1:2, 2::2]) -
+                                       idy2*(Pp[2::2, 2::2, 2::2] + Pp[2::2, :-2:2, 2::2]) -
+                                       idz2*(Pp[2::2, 1:-1:2, 3::2] + Pp[2::2, 1:-1:2, 1:-1:2]))
+
+
+        # 0, 1, 1 configuration
+        Pp[1:-1:2, 2::2, 2::2] = (1.0-gssor)*Ppp[1:-1:2, 2::2, 2::2] + (gssor/(-2.0*(idx2 + idy2 + idz2))) * (rho[1:-1:2, 2::2, 2::2] - 
+                                       idx2*(Pp[2::2, 2::2, 2::2] + Pp[:-2:2, 2::2, 2::2]) -
+                                       idy2*(Pp[1:-1:2, 3::2, 2::2] + Pp[1:-1:2, 1:-1:2, 2::2]) -
+                                       idz2*(Pp[1:-1:2, 2::2, 3::2] + Pp[1:-1:2, 2::2, 1:-1:2]))
+
+
+        # Update black cells
+        # 1, 0, 0 configuration
+        Pp[2::2, 1:-1:2, 1:-1:2] = (1.0-gssor)*Ppp[2::2, 1:-1:2, 1:-1:2] + (gssor/(-2.0*(idx2 + idy2 + idz2))) * (rho[2::2, 1:-1:2, 1:-1:2] - 
+                                       idx2*(Pp[3::2, 1:-1:2, 1:-1:2] + Pp[1:-1:2, 1:-1:2, 1:-1:2]) -
+                                       idy2*(Pp[2::2, 2::2, 1:-1:2] + Pp[2::2, :-2:2, 1:-1:2]) -
+                                       idz2*(Pp[2::2, 1:-1:2, 2::2] + Pp[2::2, 1:-1:2, :-2:2]))
+
+
+        # 0, 1, 0 configuration
+        Pp[1:-1:2, 2::2, 1:-1:2] = (1.0-gssor)*Ppp[1:-1:2, 2::2, 1:-1:2] + (gssor/(-2.0*(idx2 + idy2 + idz2))) * (rho[1:-1:2, 2::2, 1:-1:2] - 
+                                       idx2*(Pp[2::2, 2::2, 1:-1:2] + Pp[:-2:2, 2::2, 1:-1:2]) -
+                                       idy2*(Pp[1:-1:2, 3::2, 1:-1:2] + Pp[1:-1:2, 1:-1:2, 1:-1:2]) -
+                                       idz2*(Pp[1:-1:2, 2::2, 2::2] + Pp[1:-1:2, 2::2, :-2:2]))
+
+        # 0, 0, 1 configuration
+        Pp[1:-1:2, 1:-1:2, 2::2] = (1.0-gssor)*Ppp[1:-1:2, 1:-1:2, 2::2] + (gssor/(-2.0*(idx2 + idy2 + idz2))) * (rho[1:-1:2, 1:-1:2, 2::2] - 
+                                       idx2*(Pp[2::2, 1:-1:2, 2::2] + Pp[:-2:2, 1:-1:2, 2::2]) -
+                                       idy2*(Pp[1:-1:2, 2::2, 2::2] + Pp[1:-1:2, :-2:2, 2::2]) -
+                                       idz2*(Pp[1:-1:2, 1:-1:2, 3::2] + Pp[1:-1:2, 1:-1:2, 1:-1:2]))
+
+        # 1, 1, 1 configuration
+        Pp[2::2, 2::2, 2::2] = (1.0-gssor)*Ppp[2::2, 2::2, 2::2] + (gssor/(-2.0*(idx2 + idy2 + idz2))) * (rho[2::2, 2::2, 2::2] - 
+                                       idx2*(Pp[3::2, 2::2, 2::2] + Pp[1:-1:2, 2::2, 2::2]) -
+                                       idy2*(Pp[2::2, 3::2, 2::2] + Pp[2::2, 1:-1:2, 2::2]) -
+                                       idz2*(Pp[2::2, 2::2, 3::2] + Pp[2::2, 2::2, 1:-1:2]))
+
+        '''
         Pp[1:-1, 1:-1, 1:-1] = (1.0/(-2.0*(idx2 + idy2 + idz2))) * (rho[1:-1, 1:-1, 1:-1] - 
                                        idx2*(Pp[:-2, 1:-1, 1:-1] + Pp[2:, 1:-1, 1:-1]) -
                                        idy2*(Pp[1:-1, :-2, 1:-1] + Pp[1:-1, 2:, 1:-1]) -
                                        idz2*(Pp[1:-1, 1:-1, :-2] + Pp[1:-1, 1:-1, 2:]))   
-                  
+        '''
+
         imposePpBCs(Pp)
    
         maxErr = np.amax(np.fabs(rho[1:-1, 1:-1, 1:-1] -((
@@ -689,8 +803,8 @@ def Poisson_Jacobi(rho):
 
     
     
-        if (jCnt % 100 == 0):
-            print(jCnt, maxErr)
+        #if (jCnt % 100 == 0):
+            #print(jCnt, maxErr)
 
         jCnt += 1
     
@@ -738,14 +852,21 @@ def imposePpBCs(Pp):
 
 iCnt = 1
 
-t1 = datetime.now()
+#t1 = datetime.now()
 
 while True:
+
+    t1 = datetime.now()
+
+    tup1 = datetime.now()
 
     Hx = computeNLinDiff_X(U, V, W)
     Hy = computeNLinDiff_Y(U, V, W)
     Hz = computeNLinDiff_Z(U, V, W)
     Ht = computeNLinDiff_T(U, V, W, T)  
+
+    tup2 = datetime.now()
+    #print("H time", tup2-tup1)
 
     Hx[1:-1, 1:-1, 1:-1] = U[1:-1, 1:-1, 1:-1] + dt*(Hx[1:-1, 1:-1, 1:-1] - np.sqrt((Ta*Pr)/Ra)*(-V[1:-1, 1:-1, 1:-1]) - (P[2:, 1:-1, 1:-1] - P[:-2, 1:-1, 1:-1])/(2.0*hx))
     uJacobi(Hx)
@@ -759,18 +880,17 @@ while True:
     Ht[1:-1, 1:-1, 1:-1] = T[1:-1, 1:-1, 1:-1] + dt*Ht[1:-1, 1:-1, 1:-1]
     TJacobi(Ht)   
 
-    rhs = np.zeros([Nx+2, Ny+2, Nz+2])
     rhs[1:-1, 1:-1, 1:-1] = ((U[2:, 1:-1, 1:-1] - U[:-2, 1:-1, 1:-1])/(2.0*hx) +
                                 (V[1:-1, 2:, 1:-1] - V[1:-1, :-2, 1:-1])/(2.0*hy) +
                                 (W[1:-1, 1:-1, 2:] - W[1:-1, 1:-1, :-2])/(2.0*hz))/dt
 
+
+
     tp1 = datetime.now()
-
-    #Pp = Poisson_Jacobi(rhs)
-    Pp = Poisson_MG(rhs)
-
+    Pp = Poisson_Jacobi(rhs)
+    #Pp = Poisson_MG(rhs)
     tp2 = datetime.now()
-    #print(tp2-tp1)    
+    #print("Poisson time", tp2-tp1)    
 
     P = P + Pp
 
@@ -830,6 +950,10 @@ while True:
         clb.ax.set_title(r'$T$', fontsize = 20)
         plt.show()
     '''
+
+    t2 = datetime.now()
+
+    #print("Simulation time",t2-t1)
  
     if abs(time - tMax) < 0.5*dt:
         print("Simulation completed!")
@@ -839,9 +963,10 @@ while True:
 
     iCnt = iCnt + 1
 
-t2 = datetime.now()
 
-print("Simulation time",t2-t1)
+#t2 = datetime.now()
+
+#print("Simulation time",t2-t1)
 
 
 
