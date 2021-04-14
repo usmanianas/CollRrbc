@@ -10,7 +10,7 @@ import scipy.integrate as integrate
 
 
 #### Flow Parameters #############
-Ra = 1e4
+Ra = 2e4
 
 Pr = 0.71   #0.786 #0.71
 
@@ -59,7 +59,7 @@ VpTolerance = 1.0e-5
 # Tolerance value in Poisson iterations
 PoissonTolerance = 1.0e-5
 
-gssor = 1.75
+gssor = 1.5
 
 maxCount = 1e6
 
@@ -848,9 +848,9 @@ def imposePBCs(P):
     P[:, :, 0], P[:, :, -1] = P[:, :, 1], P[:, :, -2]
 
 def imposePpBCs(Pp):
-    Pp[0, :, :], Pp[-1, :, :] = -Pp[1, :, :], -Pp[-2, :, :]
-    Pp[:, 0, :], Pp[:, -1, :] = -Pp[:, 1, :], -Pp[:, -2, :]
-    Pp[:, :, 0], Pp[:, :, -1] = -Pp[:, :, 1], -Pp[:, :, -2]        
+    Pp[0, :, :], Pp[-1, :, :] = Pp[1, :, :], Pp[-2, :, :]
+    Pp[:, 0, :], Pp[:, -1, :] = Pp[:, 1, :], Pp[:, -2, :]
+    Pp[:, :, 0], Pp[:, :, -1] = Pp[:, :, 1], Pp[:, :, -2]        
 
 
 iCnt = 1
@@ -890,8 +890,8 @@ while True:
 
 
     tp1 = datetime.now()
-    Pp = Poisson_Jacobi(rhs)
-    #Pp = Poisson_MG(rhs)
+    #Pp = Poisson_Jacobi(rhs)
+    Pp = Poisson_MG(rhs)
     tp2 = datetime.now()
     #print("Poisson time", tp2-tp1)    
 
